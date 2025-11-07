@@ -13,7 +13,7 @@ const JWT_SECRET = 'rskcLhzk8DgcuRKxwIEwMgFBerJpLd9wmtyIGpAKBvG'; // In producti
 // Read the HTML file at startup for Vercel compatibility
 let htmlContent;
 try {
-    htmlContent = fs.readFileSync('./Webstore-game.html', 'utf8');
+    htmlContent = fs.readFileSync('./index.html', 'utf8');
 } catch (err) {
     console.error('Error reading HTML file:', err);
     htmlContent = '<h1>File not found</h1>';
@@ -61,7 +61,7 @@ app.get('/', (req, res) => {
     res.send(htmlContent);
 });
 
-app.get('/Webstore-game.html', (req, res) => {
+app.get('/index.html', (req, res) => {
     res.send(htmlContent);
 });
 
