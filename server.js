@@ -4,10 +4,52 @@ const bodyParser = require('body-parser');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const fs = require('fs');
 
 const app = express();
 const PORT = 8000;
 const JWT_SECRET = 'rskcLhzk8DgcuRKxwIEwMgFBerJpLd9wmtyIGpAKBvG'; // In production, use environment variable
+
+// Read the HTML file at startup for Vercel compatibility
+let htmlContent;
+try {
+    htmlContent = fs.readFileSync('./Webstore-game.html', 'utf8');
+} catch (err) {
+    console.error('Error reading HTML file:', err);
+    htmlContent = '<h1>File not found</h1>';
+}
+
+// Load reviews from file
+let reviews = [];
+try {
+    const data = fs.readFileSync('./reviews.json', 'utf8').replace(/^\uFEFF/, '');
+    reviews = JSON.parse(data);
+} catch (err) {
+    console.error('Error loading reviews:', err);
+    reviews = [];
+}
+
+// Load userData from file
+let userData = {};
+try {
+    const data = fs.readFileSync('./userData.json', 'utf8').replace(/^\uFEFF/, '');
+    userData = JSON.parse(data);
+} catch (err) {
+    console.error('Error loading userData:', err);
+    userData = {};
+}
+
+// Users are now directly managed in userData
+
+// Function to save reviews to file
+function saveReviews() {
+    fs.writeFileSync('./reviews.json', JSON.stringify(reviews, null, 2));
+}
+
+// Function to save userData to file
+function saveUserData() {
+    fs.writeFileSync('./userData.json', JSON.stringify(userData, null, 2));
+}
 
 // Middleware
 app.use(cors());
@@ -15,14 +57,15 @@ app.use(bodyParser.json());
 app.use(express.static('.'));
 
 // Serve the HTML file
-app.get('/Webstore-game.html', (req, res) => {
-    res.sendFile(__dirname + '/Webstore-game.html');
+app.get('/', (req, res) => {
+    res.send(htmlContent);
 });
 
-// In-memory data storage (replace with database later)
-let users = [
-    { id: 1, username: 'admin', password: '$2a$10$FgisWgi.f05RgshHmuWcdeGnhxLOAbVRo945BzcdhRTdwcdb4qlnm', email: 'admin@mamakstore.com', verified: true, avatar: 'avatar1.png', balance: 1000000 } // Hashed '123'
-];
+app.get('/Webstore-game.html', (req, res) => {
+    res.send(htmlContent);
+});
+
+
 
 let games = [
     { id: 1, name: "Fortnite", img: "fortnite.png", desc: "Game battle royale dengan elemen membangun dan aksi cepat.", genre: ["battle-royale", "shooter", "action"], price: 0, releaseDate: "2017-07-25", developer: "Epic Games", platform: "PC, PS4, Xbox", rating: 4.5, sysReq: { min: "Minimum: Windows 7, 4GB RAM, GTX 660", rec: "Recommended: Windows 10, 8GB RAM, GTX 1060" }, screenshots: ["fortnite-ss1.png", "fortnite-ss2.png"], reviews: [] },
@@ -57,7 +100,7 @@ let games = [
     { id: 30, name: "God of War: Ragnarok", img: "gowr.png", desc: "Aksi epik Kratos dan Atreus melawan para dewa Nordik.", genre: ["action", "adventure", "mythology"], price: 0, releaseDate: "2022-11-09", developer: "Santa Monica Studio", platform: "PC, PS4, PS5", rating: 4.9, sysReq: { min: "Minimum: Windows 10, 8GB RAM, GTX 1070", rec: "Recommended: Windows 10, 16GB RAM, RTX 2060" }, screenshots: ["gowr-ss1.png", "gowr-ss2.png"], reviews: [] }
 ];
 
-let userData = {}; // { userId: { wishlist: [], library: [], cart: [{ gameId, quantity }] } }
+
 
 // Helper function to generate simple token
 function generateToken() {
@@ -74,7 +117,7 @@ app.get('/api/games', (req, res) => {
 // Login
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
-    const user = users.find(u => u.username === username);
+    const user = Object.values(userData).find(u => u.username === username);
     if (user && await bcrypt.compare(password, user.password)) {
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
         res.json({ success: true, token, user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar, balance: user.balance } });
@@ -86,12 +129,15 @@ app.post('/api/login', async (req, res) => {
 // Register
 app.post('/api/register', async (req, res) => {
     const { username, email, password } = req.body;
-    if (users.find(u => u.username === username || u.email === email)) {
+    const existingUser = Object.values(userData).find(u => u.username === username || u.email === email);
+    if (existingUser) {
         res.status(400).json({ success: false, message: 'User already exists' });
     } else {
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = { id: users.length + 1, username, email, password: hashedPassword, verified: true, avatar: 'default-avatar.png', balance: 0 };
-        users.push(newUser);
+        const newId = Object.keys(userData).length + 1;
+        const newUser = { id: newId, username, email, password: hashedPassword, verified: true, avatar: 'default-avatar.png', balance: 0, wishlist: [], library: [], cart: [] };
+        userData[newId] = newUser;
+        saveUserData();
         // Email verification commented out for demo purposes
         // const transporter = nodemailer.createTransport({
         //     service: 'gmail',
@@ -120,9 +166,10 @@ app.post('/api/register', async (req, res) => {
 // Email verification
 app.get('/api/verify/:userId', (req, res) => {
     const userId = parseInt(req.params.userId);
-    const user = users.find(u => u.id === userId);
+    const user = userData[userId];
     if (user) {
         user.verified = true;
+        saveUserData();
         res.send('Email verified successfully!');
     } else {
         res.status(404).send('User not found');
@@ -136,7 +183,7 @@ app.get('/api/user', (req, res) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         const userId = decoded.userId;
-        const user = users.find(u => u.id === userId);
+        const user = userData[userId];
         if (user) {
             res.json({ success: true, user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar, verified: user.verified, balance: user.balance } });
         } else {
@@ -156,6 +203,7 @@ app.post('/api/wishlist', (req, res) => {
     } else if (action === 'remove') {
         userData[userId].wishlist = userData[userId].wishlist.filter(id => id !== gameId);
     }
+    saveUserData();
     res.json({ success: true, wishlist: userData[userId].wishlist });
 });
 
@@ -192,12 +240,13 @@ app.post('/api/library', (req, res) => {
         // Remove from cart if present
         userData[userId].cart = userData[userId].cart.filter(item => item.gameId !== gameId);
     }
+    saveUserData();
     res.json({ success: true, library: userData[userId].library });
 });
 
 // Get user data
 app.get('/api/user-data/:userId', (req, res) => {
-    const userId = parseInt(req.params.userId);
+    const userId = req.params.userId;
     if (userData[userId]) {
         res.json({ success: true, data: userData[userId] });
     } else {
@@ -213,9 +262,10 @@ app.post('/api/avatar', (req, res) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         const userId = decoded.userId;
         const { avatar } = req.body;
-        const user = users.find(u => u.id === userId);
+        const user = userData[userId];
         if (user) {
             user.avatar = avatar;
+            saveUserData();
             res.json({ success: true, avatar });
         } else {
             res.status(404).json({ success: false, message: 'User not found' });
@@ -251,13 +301,24 @@ app.post('/api/reviews', (req, res) => {
     const { gameId, user, rating, comment } = req.body;
     const game = games.find(g => g.id === parseInt(gameId));
     if (game) {
-        game.reviews.push({ user, rating: parseFloat(rating), comment });
+        const userObj = Object.values(userData).find(u => u.username === user);
+        const avatar = userObj ? userObj.avatar : 'default-avatar.png';
+        const newReview = { gameId: parseInt(gameId), user, rating: parseFloat(rating), comment, date: new Date().toISOString(), avatar };
+        game.reviews.push(newReview);
+        reviews.push(newReview);
+        saveReviews();
         res.json({ success: true, reviews: game.reviews });
     } else {
         res.status(404).json({ success: false, message: 'Game not found' });
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+// For Vercel deployment
+module.exports = app;
+
+// For local development
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+    });
+}
