@@ -47,17 +47,6 @@ function saveReviews() {
 fs.writeFileSync('./reviews.json', JSON.stringify(reviews, null, 2));
 }
 
-app.use(express.static('public/images'));  // Serve images at root for game images
-app.use('/images', express.static('public/images'));
->>>>>>> eb6faef (Fix image serving for Vercel deployment by moving images to public/ and updating static paths)
-=======
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use(express.static('public'));
-app.use(express.static('public/images'));  // Serve images at root for game images
-app.use('/images', express.static('public/images'));
-=======
 // Function to save userData to file
 function saveUserData() {
 fs.writeFileSync('./userData.json', JSON.stringify(userData, null, 2));
@@ -69,33 +58,6 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 app.use(express.static('public/images'));  // Serve images at root for game images
 app.use('/images', express.static('public/images'));
-=======
-app.use(express.static('public/images'));  // Serve images at root for game images
-app.use('/images', express.static('public/images'));
->>>>>>> eb6faef (Fix image serving for Vercel deployment by moving images to public/ and updating static paths)
-=======
-app.use(express.static('public'));
-app.use(express.static('public/images'));  // Serve images at root for game images
-app.use('/images', express.static('public/images'));
-=======
-app.use(express.static('public/images'));  // Serve images at root for game images
-app.use('/images', express.static('public/images'));
->>>>>>> eb6faef (Fix image serving for Vercel deployment by moving images to public/ and updating static paths)
-=======
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use(express.static('public'));
-app.use(express.static('public/images'));  // Serve images at root for game images
-app.use('/images', express.static('public/images'));
-=======
-app.use(express.static('public'));
-app.use(express.static('public/images'));  // Serve images at root for game images
-app.use('/images', express.static('public/images'));
-=======
-app.use(express.static('public/images'));  // Serve images at root for game images
-app.use('/images', express.static('public/images'));
->>>>>>> eb6faef (Fix image serving for Vercel deployment by moving images to public/ and updating static paths)
 
 // Serve the HTML file
 app.get('/', (req, res) => {
@@ -350,11 +312,5 @@ res.status(404).json({ success: false, message: 'Game not found' });
 }
 });
 
-module.exports = app;
->>>>>>> eb6faef (Fix image serving for Vercel deployment by moving images to public/ and updating static paths)
-=======
 // For Vercel deployment
 module.exports = app;
-=======
-module.exports = app;
->>>>>>> eb6faef (Fix image serving for Vercel deployment by moving images to public/ and updating static paths)
