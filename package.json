@@ -1,5 +1,5 @@
 {
-  "name": "mamak-store",
+  "name": "mamakstore",
   "version": "1.0.0",
   "description": "Game webstore backend",
   "main": "server.js",
